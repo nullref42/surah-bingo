@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Surah Bingo 🌙</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --gold: #d4a853;
+    --gold-light: #f0d68a;
+    --teal: #1a6b5a;
+    --teal-dark: #0d3d32;
+    --teal-deeper: #082a23;
+    --bg: #0a1f1a;
+    --card-bg: #0f2e26;
+    --cell-bg: #143d33;
+    --cell-hover: #1a5245;
+    --cell-marked: #d4a853;
+    --cell-correct: #2ecc71;
+    --cell-wrong: #e74c3c;
+    --text: #e8e0d0;
+    --text-dim: #8fa89e;
+    --free: #1a5245;
+  }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .stars {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+  .star {
+    position: absolute; width: 2px; height: 2px;
+    background: var(--gold-light); border-radius: 50%;
+    animation: twinkle 3s infinite alternate;
+  }
+  @keyframes twinkle { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 520px; margin: 0 auto; padding: 12px;
+  }
+
+  header {
+    text-align: center; padding: 16px 0 8px;
+  }
+  header h1 {
+    font-family: 'Amiri', serif; font-size: 2rem;
+    color: var(--gold); text-shadow: 0 0 20px rgba(212,168,83,0.3);
+  }
+  header .subtitle { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
+
+  .score-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 16px; margin: 8px 0;
+    background: var(--card-bg); border-radius: 12px;
+    border: 1px solid rgba(212,168,83,0.15);
+    font-size: 0.85rem;
+  }
+  .score-bar .score { color: var(--gold); font-weight: 700; }
+  .streak { color: var(--cell-correct); }
+
+  .ayah-card {
+    background: linear-gradient(135deg, var(--teal-dark), var(--card-bg));
+    border: 1px solid rgba(212,168,83,0.25);
+    border-radius: 16px; padding: 20px; margin: 10px 0;
+    text-align: center; min-height: 140px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .ayah-card::before {
+    content: ''; position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(212,168,83,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .ayah-card .bismillah {
+    font-family: 'Amiri', serif; font-size: 1.1rem;
+    color: var(--gold-light); opacity: 0.5; margin-bottom: 4px;
+  }
+  .ayah-arabic {
+    font-family: 'Amiri', serif; font-size: 1.5rem;
+    line-height: 2; direction: rtl; color: var(--gold-light);
+    margin-bottom: 10px;
+  }
+  .ayah-translation {
+    font-size: 0.85rem; color: var(--text-dim);
+    font-style: italic; line-height: 1.4;
+  }
+  .ayah-instruction {
+    font-size: 0.95rem; color: var(--gold); margin-top: 8px;
+    font-weight: 600;
+  }
+
+  .bingo-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 6px; margin: 10px 0;
+  }
+  .bingo-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    background: var(--cell-bg); border-radius: 10px;
+    cursor: pointer; transition: all 0.2s;
+    border: 2px solid transparent;
+    padding: 4px; text-align: center;
+    position: relative; overflow: hidden;
+    user-select: none;
+  }
+  .bingo-cell:active { transform: scale(0.95); }
+  .bingo-cell:hover { background: var(--cell-hover); }
+  .bingo-cell .cell-number {
+    font-size: 0.6rem; color: var(--text-dim); margin-bottom: 1px;
+  }
+  .bingo-cell .cell-name {
+    font-size: 0.7rem; font-weight: 600; line-height: 1.2;
+    color: var(--text);
+  }
+  .bingo-cell .cell-arabic {
+    font-family: 'Amiri', serif; font-size: 0.85rem;
+    color: var(--gold-light); line-height: 1.1;
+  }
+
+  .bingo-cell.free {
+    background: var(--free); border-color: var(--gold);
+    cursor: default;
+  }
+  .bingo-cell.free .cell-name { color: var(--gold); font-size: 0.8rem; }
+
+  .bingo-cell.marked {
+    background: rgba(212,168,83,0.2); border-color: var(--gold);
+  }
+  .bingo-cell.correct {
+    background: rgba(46,204,113,0.2); border-color: var(--cell-correct);
+    animation: pulse-green 0.5s;
+  }
+  .bingo-cell.wrong {
+    background: rgba(231,76,60,0.15); border-color: var(--cell-wrong);
+    animation: shake 0.4s;
+  }
+  @keyframes pulse-green {
+    0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .bingo-cell.marked .cell-name,
+  .bingo-cell.correct .cell-name { color: #fff; }
+  .bingo-cell.marked .cell-arabic { color: var(--gold); }
+
+  .bingo-cell .check-mark {
+    position: absolute; top: 2px; right: 4px;
+    font-size: 0.7rem; display: none;
+  }
+  .bingo-cell.marked .check-mark,
+  .bingo-cell.correct .check-mark { display: block; }
+
+  .controls {
+    display: flex; gap: 8px; justify-content: center; margin: 12px 0;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 10px;
+    font-family: 'Poppins', sans-serif; font-weight: 600;
+    font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold), #c49a3c);
+    color: var(--teal-deeper);
+  }
+  .btn-secondary {
+    background: var(--cell-bg); color: var(--text);
+    border: 1px solid rgba(212,168,83,0.2);
+  }
+  .btn-skip {
+    background: var(--teal-dark); color: var(--gold);
+    border: 1px solid rgba(212,168,83,0.2);
+  }
+
+  .footer {
+    text-align: center; padding: 12px 0;
+    font-size: 0.7rem; color: var(--text-dim);
+  }
+
+  /* Bingo overlay */
+  .bingo-overlay {
+    display: none; position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; z-index: 100;
+    background: rgba(0,0,0,0.8);
+    justify-content: center; align-items: center;
+    flex-direction: column;
+  }
+  .bingo-overlay.show { display: flex; }
+  .bingo-overlay h2 {
+    font-family: 'Amiri', serif; font-size: 3rem;
+    color: var(--gold); text-shadow: 0 0 40px rgba(212,168,83,0.5);
+    animation: bingo-pop 0.6s ease-out;
+  }
+  .bingo-overlay p { color: var(--text); margin: 12px 0 20px; font-size: 1.1rem; }
+  @keyframes bingo-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Mode selection */
+  .mode-screen {
+    text-align: center; padding: 40px 20px;
+  }
+  .mode-screen h2 {
+    font-family: 'Amiri', serif; font-size: 1.8rem;
+    color: var(--gold); margin-bottom: 8px;
+  }
+  .mode-screen p { color: var(--text-dim); margin-bottom: 24px; font-size: 0.9rem; }
+  .mode-cards { display: flex; flex-direction: column; gap: 12px; }
+  .mode-card {
+    background: var(--card-bg); border: 1px solid rgba(212,168,83,0.2);
+    border-radius: 14px; padding: 18px; cursor: pointer;
+    text-align: left; transition: all 0.2s;
+  }
+  .mode-card:hover { border-color: var(--gold); background: var(--cell-bg); }
+  .mode-card h3 { color: var(--gold); font-size: 1rem; margin-bottom: 4px; }
+  .mode-card p { color: var(--text-dim); font-size: 0.8rem; margin: 0; }
+
+  .difficulty-badges {
+    display: flex; gap: 8px; margin-top: 16px; justify-content: center;
+  }
+  .badge {
+    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem;
+    cursor: pointer; border: 1px solid rgba(212,168,83,0.2);
+    background: var(--card-bg); color: var(--text-dim); transition: all 0.2s;
+  }
+  .badge.active { background: var(--gold); color: var(--teal-deeper); border-color: var(--gold); font-weight: 600; }
+
+  .hidden { display: none !important; }
+
+  /* Responsive */
+  @media (max-width: 380px) {
+    .bingo-cell .cell-name { font-size: 0.6rem; }
+    .bingo-cell .cell-arabic { font-size: 0.75rem; }
+    .ayah-arabic { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="container">
+  <header>
+    <h1>🌙 Surah Bingo</h1>
+    <div class="subtitle">Learn the Quran while having fun!</div>
+  </header>
+
+  <!-- Mode Selection -->
+  <div id="modeScreen" class="mode-screen">
+    <h2>Choose Your Mode</h2>
+    <p>How would you like to play?</p>
+    <div class="mode-cards">
+      <div class="mode-card" onclick="startGame('quiz')">
+        <h3>🧠 Ayah Quiz</h3>
+        <p>Read an ayah with translation — tap the correct surah on your card!</p>
+      </div>
+      <div class="mode-card" onclick="startGame('listen')">
+        <h3>🎧 Listen & Find</h3>
+        <p>Hear the surah name called out — find and mark it on your card!</p>
+      </div>
+      <div class="mode-card" onclick="startGame('caller')">
+        <h3>👨‍👩‍👧 Family Caller</h3>
+        <p>One person calls surahs, everyone else marks their cards. Multiplayer!</p>
+      </div>
+    </div>
+    <div class="difficulty-badges">
+      <div class="badge active" data-diff="easy" onclick="setDifficulty('easy')">Easy (Juz 30)</div>
+      <div class="badge" data-diff="medium" onclick="setDifficulty('medium')">Medium</div>
+      <div class="badge" data-diff="hard" onclick="setDifficulty('hard')">Hard (All)</div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="hidden">
+    <div class="score-bar">
+      <div>✅ <span class="score" id="scoreCorrect">0</span> correct</div>
+      <div>🔥 <span class="streak" id="streakCount">0</span> streak</div>
+      <div>❌ <span id="scoreMiss">0</span> miss</div>
+    </div>
+
+    <div class="ayah-card" id="ayahCard">
+      <div class="ayah-instruction">Tap Start to begin!</div>
+    </div>
+
+    <div class="bingo-grid" id="bingoGrid"></div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="nextBtn" onclick="nextRound()">▶ Start</button>
+      <button class="btn btn-skip" id="skipBtn" onclick="skipRound()" style="display:none">⏭ Skip</button>
+      <button class="btn btn-secondary" onclick="newCard()">🔀 New Card</button>
+      <button class="btn btn-secondary" onclick="goHome()">🏠 Menu</button>
+    </div>
+  </div>
+
+  <div class="footer">Made with 💛 for little Muslims everywhere</div>
+</div>
+
+<!-- Bingo Overlay -->
+<div class="bingo-overlay" id="bingoOverlay">
+  <h2>🌟 BINGO! 🌟</h2>
+  <p id="bingoMsg">MashaAllah! You got a line!</p>
+  <button class="btn btn-primary" onclick="closeBingo()">Keep Playing</button>
+  <button class="btn btn-secondary" style="margin-top:8px" onclick="resetGame()">New Game</button>
+</div>
+
+<script>
+// ============ SURAH DATA ============
+const SURAHS = [
+  // Juz 30 (easy)
+  { num: 78, en: "An-Naba", ar: "النبأ", meaning: "The News", ayahs: [
+    { ar: "عَمَّ يَتَسَاءَلُونَ", en: "About what are they asking one another?" },
+    { ar: "عَنِ النَّبَإِ الْعَظِيمِ", en: "About the great news" }
+  ]},
+  { num: 79, en: "An-Naziat", ar: "النازعات", meaning: "Those Who Pull Out", ayahs: [
+    { ar: "وَالنَّازِعَاتِ غَرْقًا", en: "By those angels who extract with violence" }
+  ]},
+  { num: 80, en: "Abasa", ar: "عبس", meaning: "He Frowned", ayahs: [
+    { ar: "عَبَسَ وَتَوَلَّىٰ", en: "He frowned and turned away" }
+  ]},
+  { num: 81, en: "At-Takwir", ar: "التكوير", meaning: "The Folding Up", ayahs: [
+    { ar: "إِذَا الشَّمْسُ كُوِّرَتْ", en: "When the sun is wrapped up" }
+  ]},
+  { num: 82, en: "Al-Infitar", ar: "الانفطار", meaning: "The Splitting", ayahs: [
+    { ar: "إِذَا السَّمَاءُ انفَطَرَتْ", en: "When the sky breaks apart" }
+  ]},
+  { num: 83, en: "Al-Mutaffifin", ar: "المطففين", meaning: "The Defrauders", ayahs: [
+    { ar: "وَيْلٌ لِّلْمُطَفِّفِينَ", en: "Woe to those who give less" }
+  ]},
+  { num: 84, en: "Al-Inshiqaq", ar: "الانشقاق", meaning: "The Splitting Open", ayahs: [
+    { ar: "إِذَا السَّمَاءُ انشَقَّتْ", en: "When the sky has split open" }
+  ]},
+  { num: 85, en: "Al-Buruj", ar: "البروج", meaning: "The Great Stars", ayahs: [
+    { ar: "وَالسَّمَاءِ ذَاتِ الْبُرُوجِ", en: "By the sky containing great stars" }
+  ]},
+  { num: 86, en: "At-Tariq", ar: "الطارق", meaning: "The Night Comer", ayahs: [
+    { ar: "وَالسَّمَاءِ وَالطَّارِقِ", en: "By the sky and the night comer" }
+  ]},
+  { num: 87, en: "Al-Ala", ar: "الأعلى", meaning: "The Most High", ayahs: [
+    { ar: "سَبِّحِ اسْمَ رَبِّكَ الْأَعْلَى", en: "Exalt the name of your Lord, the Most High" }
+  ]},
+  { num: 88, en: "Al-Ghashiyah", ar: "الغاشية", meaning: "The Overwhelming", ayahs: [
+    { ar: "هَلْ أَتَاكَ حَدِيثُ الْغَاشِيَةِ", en: "Has there reached you the report of the Overwhelming?" }
+  ]},
+  { num: 89, en: "Al-Fajr", ar: "الفجر", meaning: "The Dawn", ayahs: [
+    { ar: "وَالْفَجْرِ", en: "By the dawn" },
+    { ar: "وَلَيَالٍ عَشْرٍ", en: "And the ten nights" }
+  ]},
+  { num: 90, en: "Al-Balad", ar: "البلد", meaning: "The City", ayahs: [
+    { ar: "لَا أُقْسِمُ بِهَٰذَا الْبَلَدِ", en: "I swear by this city" }
+  ]},
+  { num: 91, en: "Ash-Shams", ar: "الشمس", meaning: "The Sun", ayahs: [
+    { ar: "وَالشَّمْسِ وَضُحَاهَا", en: "By the sun and its brightness" }
+  ]},
+  { num: 92, en: "Al-Layl", ar: "الليل", meaning: "The Night", ayahs: [
+    { ar: "وَاللَّيْلِ إِذَا يَغْشَىٰ", en: "By the night when it covers" }
+  ]},
+  { num: 93, en: "Ad-Duha", ar: "الضحى", meaning: "The Morning Hours", ayahs: [
+    { ar: "وَالضُّحَىٰ", en: "By the morning brightness" },
+    { ar: "مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ", en: "Your Lord has not taken leave of you nor has He detested you" }
+  ]},
+  { num: 94, en: "Ash-Sharh", ar: "الشرح", meaning: "The Relief", ayahs: [
+    { ar: "أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ", en: "Did We not expand for you your breast?" },
+    { ar: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا", en: "For indeed, with hardship comes ease" }
+  ]},
+  { num: 95, en: "At-Tin", ar: "التين", meaning: "The Fig", ayahs: [
+    { ar: "وَالتِّينِ وَالزَّيْتُونِ", en: "By the fig and the olive" }
+  ]},
+  { num: 96, en: "Al-Alaq", ar: "العلق", meaning: "The Clot", ayahs: [
+    { ar: "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ", en: "Read in the name of your Lord who created" }
+  ]},
+  { num: 97, en: "Al-Qadr", ar: "القدر", meaning: "The Power", ayahs: [
+    { ar: "إِنَّا أَنزَلْنَاهُ فِي لَيْلَةِ الْقَدْرِ", en: "Indeed, We sent it down during the Night of Power" },
+    { ar: "لَيْلَةُ الْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ", en: "The Night of Power is better than a thousand months" }
+  ]},
+  { num: 98, en: "Al-Bayyinah", ar: "البينة", meaning: "The Clear Evidence", ayahs: [
+    { ar: "لَمْ يَكُنِ الَّذِينَ كَفَرُوا", en: "Those who disbelieved were not to be parted" }
+  ]},
+  { num: 99, en: "Az-Zalzalah", ar: "الزلزلة", meaning: "The Earthquake", ayahs: [
+    { ar: "إِذَا زُلْزِلَتِ الْأَرْضُ زِلْزَالَهَا", en: "When the earth is shaken with its final earthquake" }
+  ]},
+  { num: 100, en: "Al-Adiyat", ar: "العاديات", meaning: "The Chargers", ayahs: [
+    { ar: "وَالْعَادِيَاتِ ضَبْحًا", en: "By the racers, panting" }
+  ]},
+  { num: 101, en: "Al-Qariah", ar: "القارعة", meaning: "The Striking Hour", ayahs: [
+    { ar: "الْقَارِعَةُ مَا الْقَارِعَةُ", en: "The Striking Calamity — what is the Striking Calamity?" }
+  ]},
+  { num: 102, en: "At-Takathur", ar: "التكاثر", meaning: "Competition", ayahs: [
+    { ar: "أَلْهَاكُمُ التَّكَاثُرُ", en: "Competition in worldly increase diverts you" }
+  ]},
+  { num: 103, en: "Al-Asr", ar: "العصر", meaning: "The Time", ayahs: [
+    { ar: "وَالْعَصْرِ إِنَّ الْإِنسَانَ لَفِي خُسْرٍ", en: "By time, indeed mankind is in loss" }
+  ]},
+  { num: 104, en: "Al-Humazah", ar: "الهمزة", meaning: "The Slanderer", ayahs: [
+    { ar: "وَيْلٌ لِّكُلِّ هُمَزَةٍ لُّمَزَةٍ", en: "Woe to every scorner and mocker" }
+  ]},
+  { num: 105, en: "Al-Fil", ar: "الفيل", meaning: "The Elephant", ayahs: [
+    { ar: "أَلَمْ تَرَ كَيْفَ فَعَلَ رَبُّكَ بِأَصْحَابِ الْفِيلِ", en: "Have you not considered how your Lord dealt with the companions of the elephant?" }
+  ]},
+  { num: 106, en: "Quraysh", ar: "قريش", meaning: "Quraysh", ayahs: [
+    { ar: "لِإِيلَافِ قُرَيْشٍ", en: "For the accustomed security of the Quraysh" }
+  ]},
+  { num: 107, en: "Al-Maun", ar: "الماعون", meaning: "Small Kindnesses", ayahs: [
+    { ar: "أَرَأَيْتَ الَّذِي يُكَذِّبُ بِالدِّينِ", en: "Have you seen the one who denies the Recompense?" }
+  ]},
+  { num: 108, en: "Al-Kawthar", ar: "الكوثر", meaning: "Abundance", ayahs: [
+    { ar: "إِنَّا أَعْطَيْنَاكَ الْكَوْثَرَ", en: "Indeed, We have granted you Al-Kawthar" }
+  ]},
+  { num: 109, en: "Al-Kafirun", ar: "الكافرون", meaning: "The Disbelievers", ayahs: [
+    { ar: "قُلْ يَا أَيُّهَا الْكَافِرُونَ", en: "Say: O disbelievers" }
+  ]},
+  { num: 110, en: "An-Nasr", ar: "النصر", meaning: "The Victory", ayahs: [
+    { ar: "إِذَا جَاءَ نَصْرُ اللَّهِ وَالْفَتْحُ", en: "When the victory of Allah has come and the conquest" }
+  ]},
+  { num: 111, en: "Al-Masad", ar: "المسد", meaning: "The Palm Fiber", ayahs: [
+    { ar: "تَبَّتْ يَدَا أَبِي لَهَبٍ وَتَبَّ", en: "May the hands of Abu Lahab be ruined, and ruined is he" }
+  ]},
+  { num: 112, en: "Al-Ikhlas", ar: "الإخلاص", meaning: "Sincerity", ayahs: [
+    { ar: "قُلْ هُوَ اللَّهُ أَحَدٌ", en: "Say: He is Allah, the One" },
+    { ar: "اللَّهُ الصَّمَدُ", en: "Allah, the Eternal Refuge" }
+  ]},
+  { num: 113, en: "Al-Falaq", ar: "الفلق", meaning: "The Daybreak", ayahs: [
+    { ar: "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ", en: "Say: I seek refuge in the Lord of daybreak" }
+  ]},
+  { num: 114, en: "An-Nas", ar: "الناس", meaning: "Mankind", ayahs: [
+    { ar: "قُلْ أَعُوذُ بِرَبِّ النَّاسِ", en: "Say: I seek refuge in the Lord of mankind" }
+  ]},
+  // Medium surahs
+  { num: 36, en: "Ya-Sin", ar: "يس", meaning: "Ya Sin", ayahs: [
+    { ar: "يس وَالْقُرْآنِ الْحَكِيمِ", en: "Ya Sin. By the wise Quran" }
+  ]},
+  { num: 55, en: "Ar-Rahman", ar: "الرحمن", meaning: "The Most Merciful", ayahs: [
+    { ar: "الرَّحْمَٰنُ عَلَّمَ الْقُرْآنَ", en: "The Most Merciful taught the Quran" },
+    { ar: "فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ", en: "So which of the favors of your Lord would you deny?" }
+  ]},
+  { num: 56, en: "Al-Waqiah", ar: "الواقعة", meaning: "The Event", ayahs: [
+    { ar: "إِذَا وَقَعَتِ الْوَاقِعَةُ", en: "When the Occurrence occurs" }
+  ]},
+  { num: 67, en: "Al-Mulk", ar: "الملك", meaning: "The Sovereignty", ayahs: [
+    { ar: "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ", en: "Blessed is He in whose hand is dominion" }
+  ]},
+  { num: 18, en: "Al-Kahf", ar: "الكهف", meaning: "The Cave", ayahs: [
+    { ar: "أَمْ حَسِبْتَ أَنَّ أَصْحَابَ الْكَهْفِ وَالرَّقِيمِ", en: "Or have you thought that the companions of the cave were among Our wondrous signs?" }
+  ]},
+  { num: 1, en: "Al-Fatihah", ar: "الفاتحة", meaning: "The Opening", ayahs: [
+    { ar: "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ", en: "All praise is due to Allah, Lord of the worlds" },
+    { ar: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", en: "It is You we worship and You we ask for help" }
+  ]},
+  { num: 2, en: "Al-Baqarah", ar: "البقرة", meaning: "The Cow", ayahs: [
+    { ar: "ذَٰلِكَ الْكِتَابُ لَا رَيْبَ فِيهِ", en: "This is the Book about which there is no doubt" }
+  ]},
+  { num: 3, en: "Aal-Imran", ar: "آل عمران", meaning: "Family of Imran", ayahs: [
+    { ar: "كُنتُمْ خَيْرَ أُمَّةٍ أُخْرِجَتْ لِلنَّاسِ", en: "You are the best nation produced for mankind" }
+  ]},
+  { num: 12, en: "Yusuf", ar: "يوسف", meaning: "Joseph", ayahs: [
+    { ar: "نَحْنُ نَقُصُّ عَلَيْكَ أَحْسَنَ الْقَصَصِ", en: "We relate to you the best of stories" }
+  ]},
+  { num: 19, en: "Maryam", ar: "مريم", meaning: "Mary", ayahs: [
+    { ar: "كهيعص", en: "Kaf Ha Ya Ain Sad" }
+  ]},
+  { num: 71, en: "Nuh", ar: "نوح", meaning: "Noah", ayahs: [
+    { ar: "إِنَّا أَرْسَلْنَا نُوحًا إِلَىٰ قَوْمِهِ", en: "Indeed, We sent Noah to his people" }
+  ]},
+  { num: 72, en: "Al-Jinn", ar: "الجن", meaning: "The Jinn", ayahs: [
+    { ar: "قُلْ أُوحِيَ إِلَيَّ أَنَّهُ اسْتَمَعَ نَفَرٌ مِّنَ الْجِنِّ", en: "Say: It has been revealed to me that a group of jinn listened" }
+  ]},
+  { num: 76, en: "Al-Insan", ar: "الإنسان", meaning: "Man", ayahs: [
+    { ar: "هَلْ أَتَىٰ عَلَى الْإِنسَانِ حِينٌ مِّنَ الدَّهْرِ", en: "Has there come upon man a period of time when he was nothing?" }
+  ]},
+];
+
+// ============ GAME STATE ============
+let difficulty = 'easy';
+let mode = 'quiz';
+let grid = []; // 25 cells, each { surah, marked, correct }
+let currentSurah = null;
+let usedSurahs = new Set();
+let score = { correct: 0, miss: 0, streak: 0, maxStreak: 0 };
+let gameActive = false;
+let bingoLines = new Set();
+
+// ============ HELPERS ============
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getSurahPool() {
+  if (difficulty === 'easy') return SURAHS.filter(s => s.num >= 78);
+  if (difficulty === 'medium') return SURAHS.filter(s => s.num >= 36);
+  return SURAHS;
+}
+
+function setDifficulty(d) {
+  difficulty = d;
+  document.querySelectorAll('.badge').forEach(b => b.classList.toggle('active', b.dataset.diff === d));
+}
+
+// ============ GRID ============
+function generateGrid() {
+  const pool = shuffle(getSurahPool());
+  const selected = pool.slice(0, 24);
+  grid = [];
+  for (let i = 0; i < 25; i++) {
+    if (i === 12) {
+      grid.push({ surah: null, marked: true, correct: true, free: true });
+    } else {
+      const idx = i > 12 ? i - 1 : i;
+      grid.push({ surah: selected[idx], marked: false, correct: false, free: false });
+    }
+  }
+}
+
+function renderGrid() {
+  const el = document.getElementById('bingoGrid');
+  el.innerHTML = '';
+  grid.forEach((cell, i) => {
+    const div = document.createElement('div');
+    div.className = 'bingo-cell' + (cell.free ? ' free' : '') + (cell.marked && !cell.free ? ' marked' : '') + (cell.correct && !cell.free ? ' correct' : '');
+    if (cell.free) {
+      div.innerHTML = '<div class="cell-name">⭐ FREE</div>';
+    } else {
+      div.innerHTML = `
+        <div class="cell-arabic">${cell.surah.ar}</div>
+        <div class="cell-name">${cell.surah.en}</div>
+        <div class="cell-number">${cell.surah.num}</div>
+        <span class="check-mark">✓</span>
+      `;
+      div.onclick = () => cellClick(i);
+    }
+    el.appendChild(div);
+  });
+}
+
+// ============ GAME LOGIC ============
+function startGame(m) {
+  mode = m;
+  document.getElementById('modeScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  resetGame();
+}
+
+function goHome() {
+  document.getElementById('modeScreen').classList.remove('hidden');
+  document.getElementById('gameScreen').classList.add('hidden');
+  gameActive = false;
+}
+
+function resetGame() {
+  score = { correct: 0, miss: 0, streak: 0, maxStreak: 0 };
+  usedSurahs.clear();
+  bingoLines.clear();
+  gameActive = false;
+  currentSurah = null;
+  generateGrid();
+  renderGrid();
+  updateScore();
+  document.getElementById('nextBtn').textContent = '▶ Start';
+  document.getElementById('skipBtn').style.display = 'none';
+  document.getElementById('ayahCard').innerHTML = '<div class="ayah-instruction">Tap Start to begin!</div>';
+  closeBingo();
+}
+
+function newCard() {
+  generateGrid();
+  renderGrid();
+  bingoLines.clear();
+  if (gameActive) nextRound();
+}
+
+function nextRound() {
+  gameActive = true;
+  document.getElementById('nextBtn').textContent = '▶ Next';
+  document.getElementById('skipBtn').style.display = '';
+
+  // Pick a surah that's on the grid and hasn't been used
+  const gridSurahs = grid.filter(c => !c.free && !c.marked).map(c => c.surah);
+  if (gridSurahs.length === 0) {
+    document.getElementById('ayahCard').innerHTML = '<div class="ayah-instruction">🎉 All surahs marked! MashaAllah!</div>';
+    return;
+  }
+  const available = gridSurahs.filter(s => !usedSurahs.has(s.num));
+  const pool = available.length > 0 ? available : gridSurahs;
+  currentSurah = pool[Math.floor(Math.random() * pool.length)];
+  usedSurahs.add(currentSurah.num);
+
+  const card = document.getElementById('ayahCard');
+
+  if (mode === 'quiz') {
+    const ayah = currentSurah.ayahs[Math.floor(Math.random() * currentSurah.ayahs.length)];
+    card.innerHTML = `
+      <div class="bismillah">بِسْمِ اللَّهِ</div>
+      <div class="ayah-arabic">${ayah.ar}</div>
+      <div class="ayah-translation">"${ayah.en}"</div>
+      <div class="ayah-instruction">Which surah is this from?</div>
+    `;
+  } else if (mode === 'listen') {
+    card.innerHTML = `
+      <div class="ayah-instruction" style="font-size:1.3rem">🔊 Find this surah:</div>
+      <div class="ayah-arabic" style="font-size:2rem; margin-top:12px">${currentSurah.ar}</div>
+      <div class="ayah-translation">${currentSurah.meaning}</div>
+    `;
+    speak(currentSurah.en);
+  } else if (mode === 'caller') {
+    card.innerHTML = `
+      <div class="ayah-instruction">📢 Call out this surah:</div>
+      <div class="ayah-arabic" style="font-size:2.2rem; margin:12px 0">${currentSurah.ar}</div>
+      <div style="font-size:1.1rem; color:var(--gold); font-weight:700">${currentSurah.en}</div>
+      <div class="ayah-translation">${currentSurah.meaning} — Surah ${currentSurah.num}</div>
+    `;
+  }
+}
+
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.85; u.pitch = 1;
+    speechSynthesis.speak(u);
+  }
+}
+
+function skipRound() {
+  nextRound();
+}
+
+function cellClick(i) {
+  if (!gameActive || !currentSurah) return;
+  const cell = grid[i];
+  if (cell.marked || cell.free) return;
+
+  if (cell.surah.num === currentSurah.num) {
+    cell.marked = true;
+    cell.correct = true;
+    score.correct++;
+    score.streak++;
+    if (score.streak > score.maxStreak) score.maxStreak = score.streak;
+    renderGrid();
+    // Flash correct
+    const cells = document.querySelectorAll('.bingo-cell');
+    cells[i].classList.add('correct');
+    updateScore();
+    checkBingo();
+    // Auto next after brief delay
+    setTimeout(() => nextRound(), 800);
+  } else {
+    score.miss++;
+    score.streak = 0;
+    updateScore();
+    const cells = document.querySelectorAll('.bingo-cell');
+    cells[i].classList.add('wrong');
+    setTimeout(() => cells[i].classList.remove('wrong'), 500);
+  }
+}
+
+function updateScore() {
+  document.getElementById('scoreCorrect').textContent = score.correct;
+  document.getElementById('scoreMiss').textContent = score.miss;
+  document.getElementById('streakCount').textContent = score.streak;
+}
+
+// ============ BINGO CHECK ============
+function checkBingo() {
+  const lines = [
+    [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24], // rows
+    [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24], // cols
+    [0,6,12,18,24],[4,8,12,16,20] // diags
+  ];
+  for (const line of lines) {
+    const key = line.join(',');
+    if (bingoLines.has(key)) continue;
+    if (line.every(i => grid[i].marked)) {
+      bingoLines.add(key);
+      showBingo();
+      return;
+    }
+  }
+}
+
+function showBingo() {
+  const msgs = [
+    "MashaAllah! You got BINGO! 🌟",
+    "SubhanAllah! Amazing work! 🎉",
+    "Allahu Akbar! BINGO! 🏆",
+    "Tabarak Allah! You're a Quran star! ⭐"
+  ];
+  document.getElementById('bingoMsg').textContent = msgs[Math.floor(Math.random() * msgs.length)];
+  document.getElementById('bingoOverlay').classList.add('show');
+}
+
+function closeBingo() {
+  document.getElementById('bingoOverlay').classList.remove('show');
+}
+
+// ============ STARS BACKGROUND ============
+function createStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 50; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.width = star.style.height = (Math.random() * 2 + 1) + 'px';
+    container.appendChild(star);
+  }
+}
+
+// ============ INIT ============
+createStars();
+</script>
+</body>
+</html>
